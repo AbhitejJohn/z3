@@ -84,23 +84,23 @@ stages:
         artifactName: 'UbuntuDoc'
         targetPath: $(Build.ArtifactStagingDirectory)
 
-  - job: ManyLinuxBuild
-    variables:
-      python: "/opt/python/cp37-cp37m/bin/python"
-      name: ManyLinux
-    displayName: "ManyLinux build"
-    pool:
-      vmImage: "ubuntu-latest"
-    container: "quay.io/pypa/manylinux2010_x86_64:latest"
-    steps:
-    - script: $(python) scripts/mk_unix_dist.py --nodotnet --nojava
-    - script: git clone https://github.com/z3prover/z3test z3test
-    - script: $(python) z3test/scripts/test_benchmarks.py build-dist/z3 z3test/regressions/smt2
-    - script: cp dist/*.zip $(Build.ArtifactStagingDirectory)/
-    - task: PublishPipelineArtifact@0
-      inputs:
-        artifactName: '$(name)Build'
-        targetPath: $(Build.ArtifactStagingDirectory)
+  # - job: ManyLinuxBuild
+  #   variables:
+  #     python: "/opt/python/cp37-cp37m/bin/python"
+  #     name: ManyLinux
+  #   displayName: "ManyLinux build"
+  #   pool:
+  #     vmImage: "ubuntu-latest"
+  #   container: "quay.io/pypa/manylinux2010_x86_64:latest"
+  #   steps:
+  #   - script: $(python) scripts/mk_unix_dist.py --nodotnet --nojava
+  #   - script: git clone https://github.com/z3prover/z3test z3test
+  #   - script: $(python) z3test/scripts/test_benchmarks.py build-dist/z3 z3test/regressions/smt2
+  #   - script: cp dist/*.zip $(Build.ArtifactStagingDirectory)/
+  #   - task: PublishPipelineArtifact@0
+  #     inputs:
+  #       artifactName: '$(name)Build'
+  #       targetPath: $(Build.ArtifactStagingDirectory)
 
 #  - job: MuslLinuxBuild
 #    condition: eq(0,1)
@@ -152,14 +152,10 @@ stages:
         targetFolder: '$(Build.ArtifactStagingDirectory)/symbols'
     # Publish symbol archive to match nuget package
     # Index your source code and publish symbols to a file share or Azure Artifacts symbol server
-    - task: PublishSymbols@2
+    - task: PublishPipelineArtifact@1
       inputs:
-        symbolsFolder: '$(Build.ArtifactStagingDirectory)/symbols'
-        searchPattern: '**/*.pdb' 
-        indexSources: false # Github not supported
-        publishSymbols: true
-        symbolServerType: TeamServices
-        detailedLog: true
+        targetPath: $(Build.ArtifactStagingDirectory)/symbols
+        artifactName: Symbols-Win32
 
   - job: Windows64
     displayName: "Windows 64-bit build"
@@ -192,14 +188,10 @@ stages:
         targetFolder: '$(Build.ArtifactStagingDirectory)/symbols'
     # Publish symbol archive to match nuget package
     # Index your source code and publish symbols to a file share or Azure Artifacts symbol server
-    - task: PublishSymbols@2
+    - task: PublishPipelineArtifact@1
       inputs:
-        symbolsFolder: '$(Build.ArtifactStagingDirectory)/symbols'
-        searchPattern: '**/*.pdb' 
-        indexSources: false # Github not supported
-        publishSymbols: true
-        symbolServerType: TeamServices
-        detailedLog: true
+        targetPath: $(Build.ArtifactStagingDirectory)/symbols
+        artifactName: Symbols-Win64
 
 - stage: Package
   jobs:
@@ -594,6 +586,35 @@ stages:
         publishVstsFeed: 'Z3Build/Z3-Nightly-Builds'
         packagesToPush: $(Agent.TempDirectory)/x86/*.nupkg
         allowPackageConflicts: true
-    
+
+ - stage: symbol_archive
+  displayName: Symbol Archival
+  jobs:
+  - job: archive
+    pool: VSEng-ReleasePool-1ES
+    steps:
+    - checkout: none
+    - download: current
+      artifact: Symbols-Win32
+      displayName: Download Windows 32-bit symbols
+    - download: current
+      artifact: Symbols-Win64
+      displayName: Download Windows 64-bit symbols
+    - task: CopyFiles@2
+      displayName: 'Collect Symbols'
+      inputs:
+        sourceFolder: $(Pipeline.Workspace)
+        contents: |
+        Symbols-Win32/**/*.pdb
+        Symbols-Win64/**/*.pdb
+        targetFolder: '$(Build.ArtifactStagingDirectory)/symbols'
+    - task: MicroBuildArchiveSymbols@1
+      displayName: Archive symbols to Symweb
+      inputs:
+        SymbolsFeatureName: $(SymbolsFeatureName)
+        SymbolsSymwebProject: VS
+        SymbolsUncPath: \\cpvsbuild\drops\Z3Prover\$(Build.DefinitionName)\$(Build.SourceBranchName)\$(Build.BuildId)\Symbols.Archival
+        SymbolsEmailContacts: aajohn@microsoft.com
+        SymbolsAgentPath: $(Build.ArtifactStagingDirectory)/symbols
        
 # TBD: run regression tests on generated binaries.
