@@ -605,8 +605,8 @@ stages:
       inputs:
         sourceFolder: $(Pipeline.Workspace)
         contents: |
-        Symbols-Win32/**/*.pdb
-        Symbols-Win64/**/*.pdb
+          Symbols-Win32/**/*.pdb
+          Symbols-Win64/**/*.pdb
         targetFolder: '$(Build.ArtifactStagingDirectory)/symbols'
     - task: MicroBuildArchiveSymbols@1
       displayName: Archive symbols to Symweb
