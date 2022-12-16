@@ -587,9 +587,9 @@ stages:
         packagesToPush: $(Agent.TempDirectory)/x86/*.nupkg
         allowPackageConflicts: true
 
- - stage: symbol_archive
-   displayName: Symbol Archival
-   jobs:
+- stage: symbol_archival
+  displayName: Symbol Archival
+  jobs:
   - job: archive
     pool: VSEng-ReleasePool-1ES
     steps:
