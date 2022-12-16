@@ -588,8 +588,8 @@ stages:
         allowPackageConflicts: true
 
  - stage: symbol_archive
-  displayName: Symbol Archival
-  jobs:
+   displayName: Symbol Archival
+   jobs:
   - job: archive
     pool: VSEng-ReleasePool-1ES
     steps:
